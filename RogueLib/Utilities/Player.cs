@@ -34,7 +34,7 @@ public class Player : IActor, IDrawable {
       _turn++;
    }
 
-   public void Draw(IRenderWindow disp) {
+   public virtual void Draw(IRenderWindow disp) {
       disp.Draw(Glyph, Pos, _color);
    }
 }
