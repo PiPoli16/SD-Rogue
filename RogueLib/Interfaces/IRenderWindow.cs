@@ -9,5 +9,5 @@ public interface IRenderWindow {
    void Draw(char   glyph, Vector2      pos,    ConsoleColor color);
 
    void fDraw(FilterSet fs, string s, ConsoleColor color);
-   void Display();
+   void Display(); //copy back to front buffer
 }
