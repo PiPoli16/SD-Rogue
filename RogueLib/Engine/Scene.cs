@@ -1,37 +1,30 @@
 using RogueLib.Engine;
 using RogueLib.Utilities;
-using CommandMap = System.Collections.Generic.Dictionary<System.ConsoleKey, string>;
+using System.Collections.Generic;
 
 namespace RogueLib.Dungeon;
 
-public abstract class Scene : ICommandable, IDrawable {
-  // scenes must implement these services -------------------------
-  public abstract void DoCommand(Command command);
-  public abstract void Draw(IRenderWindow disp); // render the scene
-  public abstract void Update();                // update the scene
+public abstract class Scene : ICommandable, IDrawable
+{
+    public abstract void DoCommand(Command command);
+    public abstract void Draw(IRenderWindow disp);
+    public abstract void Update();
 
+    protected Player? _player;
+    protected Game? _game;
 
-   // fields -------------------------------------------------------
-   protected Player? _player;             // reference back to the player
-   public    Game?   _game;               // reference back to the game
-   protected bool    _levelActive = true; // currently active level
+    protected bool _levelActive = true;
 
-   // command system ------------------------------------------------
-   public    bool       IsActive => _levelActive;
-   protected CommandMap _commandMap;
+    protected Dictionary<ConsoleKey, string> _commandMap = new();
 
-   public bool HasCommand(ConsoleKey inputKey)
-      => _commandMap.ContainsKey(inputKey);
+    public bool IsActive => _levelActive;
 
-   public string GetCommand(ConsoleKey inputKey)
-      => _commandMap[inputKey];
+    public bool HasCommand(ConsoleKey key)
+        => _commandMap.ContainsKey(key);
 
-   protected void RegisterCommand(ConsoleKey inputKey, string command)
-      => _commandMap[inputKey] = command;
+    public string GetCommand(ConsoleKey key)
+        => _commandMap[key];
 
-   // Constructor -----------------------------------------------------
-   public Scene()
-   {
-      _commandMap = new();
-   }
+    protected void RegisterCommand(ConsoleKey key, string command)
+        => _commandMap[key] = command;
 }

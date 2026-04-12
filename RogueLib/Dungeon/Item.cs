@@ -10,12 +10,12 @@ public abstract class Item
     public Vector2 Pos { get; set; }
     public char Glyph { get; init; }
 
-
-    public Item(char c, Vector2 pos)
+    public Item(char glyph, Vector2 pos)
     {
-        Glyph = c;
+        Glyph = glyph;
         Pos = pos;
     }
+
+    public abstract void Apply(Player player);
     public abstract void Draw(IRenderWindow disp);
-    
 }

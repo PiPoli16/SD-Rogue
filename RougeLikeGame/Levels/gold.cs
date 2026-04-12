@@ -1,23 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using RogueLib.Dungeon;
 using RogueLib.Utilities;
-using System.Text;
 
-using RogueLib.Dungeon;
 namespace SandBox01.Levels;
 
-public class gold: Item
+public class Gold : Item
 {
     public int Amount { get; init; }
 
-    public gold(Vector2 pos, int amt) : base('*', pos)
+    public Gold(Vector2 pos, int amt)
+        : base('*', pos)
     {
         Amount = amt;
+    }
+
+    public override void Apply(Player player)
+    {
+        player.AddGold(Amount);
+        player.SetMessage($"💰 Picked up gold! +{Amount}");
     }
 
     public override void Draw(IRenderWindow disp)
     {
         disp.Draw(Glyph, Pos, ConsoleColor.Yellow);
     }
-
 }
