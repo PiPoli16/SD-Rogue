@@ -3,109 +3,140 @@ using RogueLib.items;
 using RogueLib.Utilities;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 public class Player : IActor, IDrawable
 {
-    public string Name { get; set; } = "Rogue";
+    public string Name { get; set; }
     public Vector2 Pos;
     public char Glyph => '@';
     public ConsoleColor _color = ConsoleColor.White;
 
-    // Stats
-    public int HP { get; private set; } = 20;
-    public int MaxHP { get; private set; } = 20;
-    public int Strength { get; private set; } = 10;
-    private int _armorCount = 0; // number of armor items
-    private const int ArmorShield = 2; // each armor reduces damage
-    private int _gold = 0;
+    protected int _hp = 20;
+    protected int _maxHp = 20;
+    protected int _str = 10;
 
-    // Notifications
-    private string _msg = "";
-    private int _msgTimer = 0;
-    public string Message => _msg;
+    // 🔥 SHIELD = consumable defense pool
+    protected int _shield = 0;
 
-    // Inventory
+    protected int _gold = 0;
+
+    public int Strength => _str;
+    public int HP => _hp;
+    public int MaxHP { get => _maxHp; set => _maxHp = value; }
+
+    // shows remaining shield
+    public int Shield => _shield;
+
+    public bool IsDead => _hp <= 0;
+
     public List<Item> Inventory { get; } = new();
 
-    // Update (virtual for override)
-    public virtual void Update()
+    private Queue<string> _logs = new();
+    private const int MAX_LOGS = 12;
+    public IEnumerable<string> Logs => _logs;
+
+    public Player()
     {
-        if (_msgTimer > 0)
-        {
-            _msgTimer--;
-            if (_msgTimer == 0) _msg = "";
-        }
+        Name = "Rogue";
+        Pos = Vector2.Zero;
     }
 
-    public void Draw(IRenderWindow disp)
+    public virtual void Update() { }
+
+    public virtual void Draw(IRenderWindow disp)
+        => disp.Draw(Glyph, Pos, _color);
+
+    // ---------------- LOGS ----------------
+    public void AddLog(string message)
     {
-        disp.Draw(Glyph, Pos, _color);
+        if (_logs.Count >= MAX_LOGS)
+            _logs.Dequeue();
+
+        _logs.Enqueue(message);
     }
 
-    public string HUD => $"HP:{HP}/{MaxHP} STR:{Strength} ARM:{_armorCount} GOLD:{_gold}";
+    // ---------------- HUD ----------------
+    public string HUD =>
+        $"HP:{_hp}/{_maxHp} DEF:{_shield} STR:{_str} GOLD:{_gold}";
 
-    // Combat
-    public void TakeDamage(int dmg, string source)
-    {
-        int effectiveDamage = dmg - (_armorCount * ArmorShield);
-        if (effectiveDamage < 0) effectiveDamage = 0;
-
-        if (effectiveDamage >= HP)
-        {
-            HP = 0;
-            SetMessage("💀 You died!");
-        }
-        else
-        {
-            HP -= effectiveDamage;
-            SetMessage($"-{effectiveDamage} HP from {source}");
-        }
-    }
-
-    public void AddArmor()
-    {
-        _armorCount++;
-        HP += 2; // armor increases HP
-        SetMessage("🛡 Equipped armor (+2 HP)");
-    }
-
+    // ---------------- STATS ----------------
     public void AddStrength(int value)
     {
-        Strength += value;
-        SetMessage($"⚔ +{value} STR");
+        _str += value;
+        AddLog($"+{value} STR gained");
+    }
+
+    // 🔥 ARMOR = adds consumable shield
+    public void AddArmor(int value)
+    {
+        _shield += value;
+        AddLog($"+{value} DEF (shield)");
     }
 
     public void Heal(int amount)
     {
-        HP = Math.Min(MaxHP, HP + amount);
-        SetMessage($"🧪 +{amount} HP");
+        _hp = Math.Min(_maxHp, _hp + amount);
+        AddLog($"+{amount} HP healed");
     }
 
     public void RestoreMaxHP()
     {
-        HP = MaxHP;
-        SetMessage("🧪 Max HP restored!");
+        _hp = _maxHp;
+        AddLog("🧪 Full heal!");
     }
 
-    public void AddGold(int amt)
+    public void AddGold(int amount)
     {
-        _gold += amt;
-        SetMessage($"💰 +{amt} Gold");
+        _gold += amount;
+        AddLog($"+{amount} gold");
     }
 
-    public void SetMessage(string msg)
+    public void AddItem(Item item)
     {
-        _msg = msg;
-        _msgTimer = 40;
+        Inventory.Add(item);
+        item.Apply(this);
     }
 
+    // ---------------- DAMAGE SYSTEM ----------------
+    public void TakeDamage(int dmg, string source = "Enemy")
+    {
+        int remaining = dmg;
+
+        // 🔥 SHIELD is CONSUMED when used
+        if (_shield > 0)
+        {
+            int absorbed = Math.Min(_shield, remaining);
+
+            _shield -= absorbed;   
+            remaining -= absorbed;
+
+            AddLog($"Shield blocked {absorbed} dmg");
+        }
+
+        // HP takes leftover damage
+        if (remaining > 0)
+        {
+            _hp -= remaining;
+            AddLog($"-{remaining} HP from {source}");
+        }
+
+        if (_hp <= 0)
+            _hp = 0;
+    }
+
+    // ---------------- AUTO POTION ----------------
     public void TryAutoPotion()
     {
-        var pot = Inventory.Find(i => i is Potion || i is SpecialPotion);
-        if (pot != null && HP <= MaxHP / 2)
+        if (_hp <= _maxHp / 2)
         {
-            pot.Apply(this);
-            Inventory.Remove(pot);
+            var potion = Inventory.Find(i => i is Potion);
+            if (potion != null)
+            {
+                potion.Apply(this);
+                Inventory.Remove(potion);
+                AddLog("Auto-used potion");
+            }
         }
     }
 }
