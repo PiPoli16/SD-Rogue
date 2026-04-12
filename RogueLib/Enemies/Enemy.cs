@@ -13,6 +13,8 @@ public abstract class Enemy : IDrawable
 
     public abstract string Name { get; }
 
+    protected int _attackCooldown = 0; // ✅ NEW
+
     protected Enemy(Vector2 pos, char glyph, int hp)
     {
         Pos = pos;
@@ -37,10 +39,22 @@ public abstract class Enemy : IDrawable
             Pos = newPos;
     }
 
-    // ---------------- ATTACK SYSTEM ----------------
+    // ---------------- ATTACK CONTROL ----------------
+    protected bool CanAttack()
+    {
+        if (_attackCooldown > 0)
+        {
+            _attackCooldown--;
+            return false;
+        }
+
+        _attackCooldown = 1; // attack every other turn
+        return true;
+    }
+
     protected void Attack(Player player, int damage)
     {
-        player.TakeDamage(damage, Name);
+        player.TakeDamage(damage, Name); // ✅ USE NAME
     }
 
     // ---------------- DRAW ----------------

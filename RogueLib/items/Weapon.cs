@@ -16,7 +16,7 @@ public class Weapon : Item
     public override void Apply(Player player)
     {
         player.AddStrength(Damage);
-        player.SetMessage($"🪓 Picked up an axe! +{Damage} STR gained");
+        player.SetMessage($"Picked up an axe! +{Damage} STR gained");
     }
 
     public override void Draw(IRenderWindow disp)
