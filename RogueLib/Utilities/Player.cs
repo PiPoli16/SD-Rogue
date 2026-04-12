@@ -19,7 +19,8 @@ public class Player : IActor, IDrawable
     // 🔥 SHIELD = consumable defense pool
     protected int _shield = 0;
 
-    protected int _gold = 0;
+    public int _gold = 0;
+    public int Gold => _gold;
 
     public int Strength => _str;
     public int HP => _hp;
@@ -36,10 +37,28 @@ public class Player : IActor, IDrawable
     private const int MAX_LOGS = 12;
     public IEnumerable<string> Logs => _logs;
 
+    //Notification:
+    public int Kills { get; private set; }
+    public int PotionsUsed { get; private set; }
+    public int DamageTakenTotal { get; private set; }
+    public void AddPotionUsed()
+    {
+        PotionsUsed++;
+    }
+    public void AddKill()
+    {
+        Kills++;
+    }
+
     public Player()
     {
         Name = "Rogue";
         Pos = Vector2.Zero;
+
+        Kills = 0;
+        PotionsUsed = 0;
+        DamageTakenTotal = 0;
+    
     }
 
     public virtual void Update() { }
@@ -119,6 +138,7 @@ public class Player : IActor, IDrawable
         {
             _hp -= remaining;
             AddLog($"-{remaining} HP from {source}");
+            DamageTakenTotal += remaining;
         }
 
         if (_hp <= 0)
@@ -135,6 +155,8 @@ public class Player : IActor, IDrawable
             {
                 potion.Apply(this);
                 Inventory.Remove(potion);
+
+                PotionsUsed++; 
                 AddLog("Auto-used potion");
             }
         }
