@@ -1,16 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using RogueLib.Utilities;
-using System.Text;
+﻿using RogueLib.Utilities;
+using RogueLib.Dungeon;
 
-namespace RogueLib.Dungeon;
+namespace RogueLib.items;
 
 public abstract class Item
 {
     public Vector2 Pos { get; set; }
     public char Glyph { get; init; }
 
-    public Item(char glyph, Vector2 pos)
+    protected Item(char glyph, Vector2 pos)
     {
         Glyph = glyph;
         Pos = pos;

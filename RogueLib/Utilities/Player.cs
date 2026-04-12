@@ -1,81 +1,111 @@
 using RogueLib.Dungeon;
+using RogueLib.items;
 using RogueLib.Utilities;
 using System;
 using System.Collections.Generic;
 
-public abstract class Player : IActor, IDrawable
+public class Player : IActor, IDrawable
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = "Rogue";
     public Vector2 Pos;
     public char Glyph => '@';
     public ConsoleColor _color = ConsoleColor.White;
 
-    // ---------------- STATS ----------------
-    protected int _hp = 12;
-    protected int _maxHp = 12;
-    protected int _str = 16;
-    protected int _arm = 4;
-    protected int _gold = 0;
-    protected int _turn = 0;
+    // Stats
+    public int HP { get; private set; } = 20;
+    public int MaxHP { get; private set; } = 20;
+    public int Strength { get; private set; } = 10;
+    private int _armorCount = 0; // number of armor items
+    private const int ArmorShield = 2; // each armor reduces damage
+    private int _gold = 0;
 
-    public int Strength => _str;
-    public int Armor => _arm;
-    public int HP => _hp;
-    public int Turn => _turn;
+    // Notifications
+    private string _msg = "";
+    private int _msgTimer = 0;
+    public string Message => _msg;
 
-    // ---------------- INVENTORY ----------------
+    // Inventory
     public List<Item> Inventory { get; } = new();
 
-    // ---------------- HUD MESSAGE ONLY ----------------
-    private string _hudMessage = "";
-
-    public string Message => _hudMessage;
-
-    public Player()
-    {
-        Name = "Rogue";
-        Pos = Vector2.Zero;
-    }
-
-    // ---------------- UPDATE ----------------
+    // Update (virtual for override)
     public virtual void Update()
     {
-        _turn++;
+        if (_msgTimer > 0)
+        {
+            _msgTimer--;
+            if (_msgTimer == 0) _msg = "";
+        }
     }
 
-    // ---------------- DRAW ----------------
-    public virtual void Draw(IRenderWindow disp)
+    public void Draw(IRenderWindow disp)
     {
         disp.Draw(Glyph, Pos, _color);
     }
 
-    // ---------------- HUD ----------------
-    public string HUD => $"HP:{_hp}/{_maxHp} STR:{_str} ARM:{_arm} GOLD:{_gold} TURN:{_turn}";
+    public string HUD => $"HP:{HP}/{MaxHP} STR:{Strength} ARM:{_armorCount} GOLD:{_gold}";
 
-    // ---------------- STATS ----------------
-    public void AddStrength(int value) => _str += value;
-    public void AddArmor(int value) => _arm += value;
-    public void Heal(int amount) => _hp = Math.Min(_maxHp, _hp + amount);
-    public void AddGold(int amount) => _gold += amount;
-
-    // ---------------- MESSAGE SYSTEM (ONLY ONE) ----------------
-    public void SetMessage(string msg)
+    // Combat
+    public void TakeDamage(int dmg, string source)
     {
-        _hudMessage = msg;
+        int effectiveDamage = dmg - (_armorCount * ArmorShield);
+        if (effectiveDamage < 0) effectiveDamage = 0;
+
+        if (effectiveDamage >= HP)
+        {
+            HP = 0;
+            SetMessage("💀 You died!");
+        }
+        else
+        {
+            HP -= effectiveDamage;
+            SetMessage($"-{effectiveDamage} HP from {source}");
+        }
     }
 
-    // ---------------- DAMAGE ----------------
-    public void TakeDamage(int dmg, string source = "Enemy")
+    public void AddArmor()
     {
-        int reduced = Math.Max(0, dmg - _arm);
-        _hp -= reduced;
+        _armorCount++;
+        HP += 2; // armor increases HP
+        SetMessage("🛡 Equipped armor (+2 HP)");
+    }
 
-        SetMessage($"-{reduced} HP ({source})");
+    public void AddStrength(int value)
+    {
+        Strength += value;
+        SetMessage($"⚔ +{value} STR");
+    }
 
-        if (_hp <= 0)
+    public void Heal(int amount)
+    {
+        HP = Math.Min(MaxHP, HP + amount);
+        SetMessage($"🧪 +{amount} HP");
+    }
+
+    public void RestoreMaxHP()
+    {
+        HP = MaxHP;
+        SetMessage("🧪 Max HP restored!");
+    }
+
+    public void AddGold(int amt)
+    {
+        _gold += amt;
+        SetMessage($"💰 +{amt} Gold");
+    }
+
+    public void SetMessage(string msg)
+    {
+        _msg = msg;
+        _msgTimer = 40;
+    }
+
+    public void TryAutoPotion()
+    {
+        var pot = Inventory.Find(i => i is Potion || i is SpecialPotion);
+        if (pot != null && HP <= MaxHP / 2)
         {
-            _hp = 0;
-            SetMessage("💀 You died!");
+            pot.Apply(this);
+            Inventory.Remove(pot);
         }
     }
 }
