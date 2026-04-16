@@ -3,273 +3,295 @@ using RogueLib.Dungeon;
 using RogueLib.Enemies;
 using RogueLib.Engine;
 using RogueLib.items;
+using RogueLib.Message;
 using RogueLib.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using TileSet = System.Collections.Generic.HashSet<RogueLib.Utilities.Vector2>;
 
-namespace RlGameNS
+namespace SandBox01.Levels;
+
+public class Level : Scene
 {
-    public class Level : Scene
+    private string _map;
+    private int _levelNumber;
+
+    private HashSet<Vector2> _floor = new();
+    private HashSet<Vector2> _walkables = new();
+    private HashSet<Vector2> _exit = new();
+
+    private List<Item> _items = new();
+    private List<Enemy> _enemies = new();
+
+    private List<Message> _messages = new();
+
+    private Random rng = new Random();
+
+    public Level(Player player, string map, Game game, int levelNumber)
     {
-        private string _map;
-        private int _levelNumber;
+        _player = player;
+        _game = game;
+        _map = map;
+        _levelNumber = levelNumber;
 
-        private TileSet _floor = new();
-        private TileSet _walkables = new();
-        private TileSet _exit = new();
+        // ================= PLAYER SCALING =================
+        int hpBonus = (_levelNumber - 1) * 5;
+        _player.MaxHP += hpBonus;
+        _player.Heal(hpBonus);
 
-        private List<Item> _items = new();
-        private List<Enemy> _enemies = new();
+        // Fixed spawn
+        _player.Pos = new Vector2(4, 12);
 
-        private Random rng = new Random();
+        initMapTileSets(map);
+        registerCommandsWithScene();
 
-        public Level(Player player, string map, Game game, int levelNumber)
+        // ================= SPAWNER =================
+        var spawner = new DefaultDungeonSpawner(_floor, _levelNumber);
+
+        _enemies = spawner.SpawnEnemies();
+        _items = spawner.SpawnItems();
+
+        _exit.Add(spawner.SpawnExit(_items, _enemies));
+        _walkables.Add(_exit.First());
+    }
+
+    // ================= UPDATE =================
+    public override void Update()
+    {
+        if (_player == null) return;
+
+        // update messages
+        foreach (var m in _messages)
+            m.Update();
+
+        _messages.RemoveAll(m => !m.IsAlive);
+
+        // ================= EXIT =================
+        if (_exit.Contains(_player.Pos))
         {
-            _player = player;
-            _game = game;
-            _map = map;
-            _levelNumber = levelNumber;
-
-            // Level scaling (fixed rule)
-            int extraMaxHP = (_levelNumber - 1) * 5;
-            _player.MaxHP += extraMaxHP;
-            _player.Heal(extraMaxHP);
-
-            _player.Pos = new Vector2(4, 12);
-
-            initMapTileSets(map);
-            registerCommandsWithScene();
-            spawnItems();
-            spawnEnemies();
-            placeRandomExit();
+            _game!.LoadLevel(new Level(_player, MyGame.map1, _game!, _levelNumber + 1));
+            return;
         }
 
-        // ---------------- UPDATE ----------------
-        public override void Update()
+        // ================= ITEM PICKUP =================
+        foreach (var item in _items.Where(i => i.Pos == _player.Pos).ToList())
         {
-            if (_player == null) return;
+            _player.AddItem(item);
+            AddMessage(GetItemPickupMessage(item), ConsoleColor.Yellow);
+            _items.Remove(item);
+        }
 
-            if (_exit.Contains(_player.Pos))
+        // ================= ENEMY UPDATE =================
+        foreach (var e in _enemies.ToList())
+            e.Update(_player, _walkables);
+
+        // ================= ENEMY ATTACK =================
+        foreach (var e in _enemies)
+        {
+            e.TickCooldown();
+
+            if (e.Pos == _player.Pos && e.CanAttack())
             {
-                _game!.LoadLevel(new Level(_player, MyGame.map1, _game!, _levelNumber + 1));
-                return;
+                _player.TakeDamage(e.AttackPower, e.Name);
+                AddMessage($"-{e.AttackPower} HP from {e.Name}", ConsoleColor.DarkRed);
+
+                e.ResetAttackCooldown(10);
             }
+        }
 
-            // Item pickup
-            var itemsHere = _items.Where(i => i.Pos == _player.Pos).ToList();
-            foreach (var item in itemsHere)
+        // ================= AUTO POTION =================
+        if (_player.TryAutoPotion())
+        {
+            AddMessage("Auto-used Potion!", ConsoleColor.Magenta);
+        }
+
+        _player.Update();
+
+        // ================= DEATH =================
+        if (_player.HP <= 0)
+        {
+            Console.Clear();
+            Console.WriteLine(DungeonConfig.RIP);
+
+            while (true)
             {
-                _player.AddItem(item);
-                _items.Remove(item);
-            }
-
-            // Enemy updates
-            foreach (var e in _enemies.ToList())
-                e.Update(_player, _walkables);
-
-            _player.TryAutoPotion();
-            _player.Update();
-
-            // Death
-            if (_player.HP <= 0)
-            {
-                Console.Clear();
-                Console.WriteLine(DungeonConfig.RIP);
                 Console.WriteLine("\nRestart? (Y/N)");
+                char input = char.ToLower(Console.ReadKey(true).KeyChar);
 
-                var key = Console.ReadKey(true).Key;
-                if (key == ConsoleKey.Y)
+                if (input == 'y')
+                {
                     new MyGame().run();
-                else
+                    return;
+                }
+                else if (input == 'n')
+                {
                     Environment.Exit(0);
+                }
             }
         }
+    }
 
-        // ---------------- DRAW ----------------
-        public override void Draw(IRenderWindow disp)
+    // ================= DRAW =================
+    public override void Draw(IRenderWindow disp)
+    {
+        string[] lines = _map.Split('\n');
+
+        for (int y = 0; y < lines.Length; y++)
+            disp.Draw(lines[y], new Vector2(0, y), ConsoleColor.Gray);
+
+        foreach (var i in _items)
+            i.Draw(disp);
+
+        foreach (var e in _enemies)
+            e.Draw(disp);
+
+        foreach (var p in _exit)
+            disp.Draw('X', p, ConsoleColor.Cyan);
+
+        _player.Draw(disp);
+
+        drawRightPanel(disp);
+
+        int hudY = DungeonConfig.height - 2;
+        int msgY = DungeonConfig.height - 1;
+
+        disp.Draw(_player.HUD, new Vector2(0, hudY), ConsoleColor.Green);
+
+        // clear message line
+        disp.Draw(new string(' ', 70), new Vector2(0, msgY), ConsoleColor.Black);
+
+        if (_messages.Count > 0)
         {
-            string[] mapLines = _map.Split('\n');
-
-            // Draw map
-            for (int y = 0; y < mapLines.Length; y++)
-                disp.Draw(mapLines[y], new Vector2(0, y), ConsoleColor.Gray);
-
-            // Items
-            foreach (var item in _items)
-                item.Draw(disp);
-
-            // Enemies
-            foreach (var e in _enemies)
-                e.Draw(disp);
-
-            // Exit
-            foreach (var p in _exit)
-                disp.Draw('X', p, ConsoleColor.Cyan);
-
-            // Player
-            _player.Draw(disp);
-
-            // RIGHT SIDE PANEL (NEW FEATURE)
-            drawRightPanel(disp);
-
-            // HUD (bottom)
-            int hudLine = mapLines.Length;
-            if (hudLine < Console.WindowHeight)
-                disp.Draw(_player.HUD, new Vector2(0, hudLine), ConsoleColor.Green);
+            var last = _messages[^1];
+            disp.Draw(last.Text, new Vector2(0, msgY), last.Color);
         }
+    }
 
-        // ---------------- RIGHT PANEL ----------------
-        private void drawRightPanel(IRenderWindow disp)
+    // ================= INPUT =================
+    public override void DoCommand(Command command)
+    {
+        Vector2 dir = command.Name switch
         {
-            int x = 60; // right panel position
+            "up" => Vector2.N,
+            "down" => Vector2.S,
+            "left" => Vector2.W,
+            "right" => Vector2.E,
+            _ => Vector2.Zero
+        };
 
-            int statIncrease = (_levelNumber - 1) * 5;
+        Move(dir);
+    }
 
-            disp.Draw("ENEMY STATS", new Vector2(x, 1), ConsoleColor.Yellow);
+    // ================= MOVE =================
+    private void Move(Vector2 dir)
+    {
+        var next = _player.Pos + dir;
 
-            // Goblin
-            disp.Draw("Goblin", new Vector2(x, 3), ConsoleColor.Green);
-            disp.Draw($"HP: {5 + statIncrease}", new Vector2(x, 4), ConsoleColor.Gray);
-            disp.Draw($"ATK: {5 + statIncrease}", new Vector2(x, 5), ConsoleColor.Gray);
+        if (!_walkables.Contains(next))
+            return;
 
-            // Orc
-            disp.Draw("Orc", new Vector2(x, 7), ConsoleColor.DarkYellow);
-            disp.Draw($"HP: {10 + statIncrease}", new Vector2(x, 8), ConsoleColor.Gray);
-            disp.Draw($"ATK: {8 + statIncrease}", new Vector2(x, 9), ConsoleColor.Gray);
+        var enemy = _enemies.FirstOrDefault(e => e.Pos == next);
 
-            // Troll
-            disp.Draw("Troll", new Vector2(x, 11), ConsoleColor.Red);
-            disp.Draw($"HP: {20 + statIncrease}", new Vector2(x, 12), ConsoleColor.Gray);
-            disp.Draw($"ATK: {15 + statIncrease}", new Vector2(x, 13), ConsoleColor.Gray);
-
-            disp.Draw($"Level: {_levelNumber}", new Vector2(x, 15), ConsoleColor.Cyan);
-        }
-
-        // ---------------- INPUT ----------------
-        public override void DoCommand(Command command)
+        if (enemy != null)
         {
-            Vector2 dir = command.Name switch
+            int dmg = _player.Strength;
+            enemy.HP -= dmg;
+
+            AddMessage($"Hit {enemy.Name} for {dmg}", ConsoleColor.Red);
+
+            if (enemy.HP <= 0)
             {
-                "up" => Vector2.N,
-                "down" => Vector2.S,
-                "left" => Vector2.W,
-                "right" => Vector2.E,
-                _ => Vector2.Zero
-            };
+                _enemies.Remove(enemy);
+                _player.AddGold(enemy.GoldDrop);
+                _player.AddStrength(1);
 
-            Move(dir);
-        }
-
-        private void Move(Vector2 dir)
-        {
-            var next = _player.Pos + dir;
-
-            if (!_walkables.Contains(next)) return;
-
-            var enemy = _enemies.FirstOrDefault(e => e.Pos == next);
-
-            if (enemy != null)
-            {
-                int playerAttack = _player.Strength;
-
-                if (playerAttack >= enemy.AttackPower)
-                {
-                    enemy.HP -= playerAttack;
-
-                    if (enemy.HP <= 0)
-                    {
-                        _enemies.Remove(enemy);
-                        _player.AddGold(enemy.GoldDrop);
-
-                        // ALL enemies give +1 STR
-                        _player.AddStrength(1);
-                    }
-                }
-                else
-                {
-                    _player.TakeDamage(enemy.AttackPower, enemy.Name);
-                }
+                AddMessage($"{enemy.Name} defeated!", ConsoleColor.Green);
             }
             else
             {
-                _player.Pos = next;
-            }
-
-            _player.TryAutoPotion();
-        }
-
-        // ---------------- MAP ----------------
-        private void initMapTileSets(string map)
-        {
-            foreach (var (c, p) in Vector2.Parse(map))
-            {
-                if (c == '.') { _floor.Add(p); _walkables.Add(p); }
-                if (c == '+' || c == '#') _walkables.Add(p);
+                _player.TakeDamage(enemy.AttackPower, enemy.Name);
             }
         }
-
-        private void placeRandomExit()
+        else
         {
-            Vector2 pos;
-            do
-            {
-                pos = _floor.ElementAt(rng.Next(_floor.Count));
-            }
-            while (_items.Any(i => i.Pos == pos) || _enemies.Any(e => e.Pos == pos));
-
-            _exit.Clear();
-            _exit.Add(pos);
-            _walkables.Add(pos);
+            _player.Pos = next;
         }
+    }
 
-        // ---------------- ITEMS ----------------
-        private void spawnItems()
+    // ================= MAP =================
+    private void initMapTileSets(string map)
+    {
+        foreach (var (c, p) in Vector2.Parse(map))
         {
-            for (int i = 0; i < 2; i++) _items.Add(new Weapon(randomFloorPos(), 5));
-            for (int i = 0; i < 2; i++) _items.Add(new Potion(randomFloorPos()));
-            for (int i = 0; i < 2; i++) _items.Add(new Armor(randomFloorPos()));
-            for (int i = 0; i < 3; i++) _items.Add(new Gold(randomFloorPos(), rng.Next(2, 11)));
-        }
+            if (c == '.')
+                _floor.Add(p);
 
-        // ---------------- ENEMIES ----------------
-        private void spawnEnemies()
+            if (c == '.' || c == '+' || c == '#')
+                _walkables.Add(p);
+        }
+    }
+
+    // ================= MESSAGES =================
+    private void AddMessage(string text, ConsoleColor color)
+    {
+        _messages.Add(new Message(text, color));
+
+        if (_messages.Count > 3)
+            _messages.RemoveAt(0);
+    }
+
+    private string GetItemPickupMessage(Item item)
+    {
+        return item switch
         {
-            int statIncrease = (_levelNumber - 1) * 5;
+            Weapon w => $"Picked up {w.Type} (+{w.Power} STR)",
 
-            for (int i = 0; i < 2; i++)
-            {
-                var g = new Goblin(randomFloorPos());
-                g.AttackPower += statIncrease;
-                _enemies.Add(g);
+            Armor a => $"Picked up {a.Type} Armor (+{a.DefenseValue} DEF)",
 
-                var o = new Orc(randomFloorPos());
-                o.AttackPower += statIncrease;
-                _enemies.Add(o);
+            Potion p =>
+                $"Picked up {p.Type} Potion (+{p.Amount} {(p.Type == PotionType.Healing ? "HP" : p.Type == PotionType.Power ? "STR" : "DEF")})",
 
-                var t = new Troll(randomFloorPos());
-                t.AttackPower += statIncrease;
-                _enemies.Add(t);
-            }
-        }
+            SpecialPotion => "Picked up Special Potion (Full Heal)",
 
-        private Vector2 randomFloorPos()
-        {
-            return _floor.ElementAt(rng.Next(_floor.Count));
-        }
+            Gold g => $"+{g.Amount} Gold",
 
-        private void registerCommandsWithScene()
-        {
-            RegisterCommand(ConsoleKey.UpArrow, "up");
-            RegisterCommand(ConsoleKey.DownArrow, "down");
-            RegisterCommand(ConsoleKey.LeftArrow, "left");
-            RegisterCommand(ConsoleKey.RightArrow, "right");
+            _ => "Picked up Gold!"
+        };
+    }
 
-            RegisterCommand(ConsoleKey.W, "up");
-            RegisterCommand(ConsoleKey.S, "down");
-            RegisterCommand(ConsoleKey.A, "left");
-            RegisterCommand(ConsoleKey.D, "right");
-        }
+    // ================= RIGHT PANEL =================
+    private void drawRightPanel(IRenderWindow disp)
+    {
+        int x = 60;
+        int statIncrease = (_levelNumber - 1) * 10;
+
+        disp.Draw("ENEMY STATS", new Vector2(x, 1), ConsoleColor.Yellow);
+
+        disp.Draw("Goblin", new Vector2(x, 3), ConsoleColor.Green);
+        disp.Draw($"HP: {5 + statIncrease}", new Vector2(x, 4), ConsoleColor.Gray);
+        disp.Draw($"ATK: {5 + statIncrease}", new Vector2(x, 5), ConsoleColor.Gray);
+
+        disp.Draw("Orc", new Vector2(x, 7), ConsoleColor.DarkYellow);
+        disp.Draw($"HP: {10 + statIncrease}", new Vector2(x, 8), ConsoleColor.Gray);
+        disp.Draw($"ATK: {8 + statIncrease}", new Vector2(x, 9), ConsoleColor.Gray);
+
+        disp.Draw("Troll", new Vector2(x, 11), ConsoleColor.Red);
+        disp.Draw($"HP: {20 + statIncrease}", new Vector2(x, 12), ConsoleColor.Gray);
+        disp.Draw($"ATK: {15 + statIncrease}", new Vector2(x, 13), ConsoleColor.Gray);
+
+        disp.Draw($"Level: {_levelNumber}", new Vector2(x, 15), ConsoleColor.Cyan);
+    }
+
+    private void registerCommandsWithScene()
+    {
+        RegisterCommand(ConsoleKey.UpArrow, "up");
+        RegisterCommand(ConsoleKey.DownArrow, "down");
+        RegisterCommand(ConsoleKey.LeftArrow, "left");
+        RegisterCommand(ConsoleKey.RightArrow, "right");
+
+        RegisterCommand(ConsoleKey.W, "up");
+        RegisterCommand(ConsoleKey.S, "down");
+        RegisterCommand(ConsoleKey.A, "left");
+        RegisterCommand(ConsoleKey.D, "right");
     }
 }

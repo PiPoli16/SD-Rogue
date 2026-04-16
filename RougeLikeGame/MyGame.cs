@@ -1,8 +1,9 @@
 using RogueLib.Dungeon;
 using RogueLib.Engine;
 using RogueLib.Utilities;
+using SandBox01.Levels;
 
-namespace RlGameNS;
+namespace SandBox01;
 
 public class MyGame : Game
 {
@@ -44,7 +45,7 @@ public class MyGame : Game
       │.........│                 │.........+#########+.........│
       └─+───────┘                 └───+─────┘         └───────+─┘
         #                             #                       #
-        ######               ┌────────+──────────────┐        X
+        ######               ┌────────+──────────────┐        #
              #             ##+.......................|        #
              #             # │.......................│   ######
              #             # │.......................│   #

@@ -18,28 +18,6 @@ public class Game
     protected Scene? _currentLevel;
     protected IRenderWindow? _window;
     protected Player? _player;
-    private int _levelIndex = 1;
-    public void LoadNextLevel()
-    {
-        _levelIndex++;
-
-        _currentLevel = CreateLevel(_levelIndex);
-    }
-    private Scene CreateLevel(int level)
-    {
-        switch (level)
-        {
-            case 1:
-                return new BaseLevel(_player!, this, DungeonConfig.map1);
-
-            case 2:
-                return new BaseLevel(_player!, this, DungeonConfig.map1);
-
-            default:
-                Console.WriteLine("GAME COMPLETE!");
-                return new EndScene(_player!);
-        }
-    }
 
     public void run()
     {
@@ -75,9 +53,5 @@ public class Game
     public void LoadLevel(Scene newLevel)
     {
         _currentLevel = newLevel;
-    }
-    public void LoadEndScene(Player player)
-    {
-        _currentLevel = new EndScene(player);
     }
 }

@@ -3,7 +3,6 @@ using RogueLib.items;
 using RogueLib.Utilities;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 public class Player : IActor, IDrawable
 {
@@ -12,103 +11,75 @@ public class Player : IActor, IDrawable
     public char Glyph => '@';
     public ConsoleColor _color = ConsoleColor.White;
 
+    // ================= BASE STATS =================
     protected int _hp = 20;
     protected int _maxHp = 20;
-    protected int _str = 10;
 
-    // 🔥 SHIELD = consumable defense pool
+    // ⚔️ MAIN STAT (USED FOR DAMAGE)
+    protected int _str = 5;
+
+    // ================= DEFENSE SYSTEM =================
     protected int _shield = 0;
 
-    public int _gold = 0;
-    public int Gold => _gold;
+    protected int _gold = 0;
 
+    // ================= INVENTORY =================
+    public List<Item> Inventory { get; } = new();
+
+    // ================= READ ONLY =================
     public int Strength => _str;
     public int HP => _hp;
     public int MaxHP { get => _maxHp; set => _maxHp = value; }
 
-    // shows remaining shield
-    public int Shield => _shield;
+    // ✅ DEFENSE STAT (FIX YOU REQUESTED)
+    public int Defense => _shield;
 
     public bool IsDead => _hp <= 0;
 
-    public List<Item> Inventory { get; } = new();
-
-    private Queue<string> _logs = new();
-    private const int MAX_LOGS = 12;
-    public IEnumerable<string> Logs => _logs;
-
-    //Notification:
-    public int Kills { get; private set; }
-    public int PotionsUsed { get; private set; }
-    public int DamageTakenTotal { get; private set; }
-    public void AddPotionUsed()
+    // ================= ATTACK = STRENGTH =================
+    public int GetAttack()
     {
-        PotionsUsed++;
-    }
-    public void AddKill()
-    {
-        Kills++;
+        return _str;
     }
 
+    // ================= CORE =================
     public Player()
     {
         Name = "Rogue";
         Pos = Vector2.Zero;
-
-        Kills = 0;
-        PotionsUsed = 0;
-        DamageTakenTotal = 0;
-    
     }
 
     public virtual void Update() { }
 
-    public virtual void Draw(IRenderWindow disp)
+    public void Draw(IRenderWindow disp)
         => disp.Draw(Glyph, Pos, _color);
 
-    // ---------------- LOGS ----------------
-    public void AddLog(string message)
-    {
-        if (_logs.Count >= MAX_LOGS)
-            _logs.Dequeue();
+    // ================= STATS =================
 
-        _logs.Enqueue(message);
-    }
-
-    // ---------------- HUD ----------------
-    public string HUD =>
-        $"HP:{_hp}/{_maxHp} DEF:{_shield} STR:{_str} GOLD:{_gold}";
-
-    // ---------------- STATS ----------------
+    // 🧠 kill gains
     public void AddStrength(int value)
     {
         _str += value;
-        AddLog($"+{value} STR gained");
     }
 
-    // 🔥 ARMOR = adds consumable shield
     public void AddArmor(int value)
     {
         _shield += value;
-        AddLog($"+{value} DEF (shield)");
     }
 
     public void Heal(int amount)
     {
         _hp = Math.Min(_maxHp, _hp + amount);
-        AddLog($"+{amount} HP healed");
     }
 
     public void RestoreMaxHP()
     {
         _hp = _maxHp;
-        AddLog("🧪 Full heal!");
     }
 
     public void AddGold(int amount)
     {
         _gold += amount;
-        AddLog($"+{amount} gold");
     }
 
     public void AddItem(Item item)
@@ -117,48 +88,47 @@ public class Player : IActor, IDrawable
         item.Apply(this);
     }
 
-    // ---------------- DAMAGE SYSTEM ----------------
+    // ================= DAMAGE SYSTEM =================
     public void TakeDamage(int dmg, string source = "Enemy")
     {
         int remaining = dmg;
 
-        // 🔥 SHIELD is CONSUMED when used
+        // shield absorbs first
         if (_shield > 0)
         {
             int absorbed = Math.Min(_shield, remaining);
-
-            _shield -= absorbed;   
+            _shield -= absorbed;
             remaining -= absorbed;
-
-            AddLog($"Shield blocked {absorbed} dmg");
         }
 
-        // HP takes leftover damage
         if (remaining > 0)
-        {
             _hp -= remaining;
-            AddLog($"-{remaining} HP from {source}");
-            DamageTakenTotal += remaining;
-        }
 
-        if (_hp <= 0)
+        if (_hp < 0)
             _hp = 0;
     }
 
-    // ---------------- AUTO POTION ----------------
-    public void TryAutoPotion()
+    // ================= AUTO POTION =================
+    public bool TryAutoPotion()
     {
         if (_hp <= _maxHp / 2)
         {
-            var potion = Inventory.Find(i => i is Potion);
+            var potion = Inventory
+                .OfType<Potion>()
+                .OrderBy(p => p.Type == PotionType.Healing ? 0 : 1)
+                .FirstOrDefault();
+
             if (potion != null)
             {
                 potion.Apply(this);
                 Inventory.Remove(potion);
-
-                PotionsUsed++; 
-                AddLog("Auto-used potion");
+                return true;
             }
         }
+        return false;
     }
+
+    // ================= HUD =================
+    public string HUD =>
+        $"HP:{_hp}/{_maxHp} STR:{_str} ATK:{GetAttack()} DEF:{_shield} GOLD:{_gold}";
 }

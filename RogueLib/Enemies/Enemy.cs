@@ -20,6 +20,30 @@ public abstract class Enemy : IDrawable
     private int _moveCounter = 0;
     private int _ticksPerMove;
 
+    // =========================
+    // 🔥 ATTACK COOLDOWN SYSTEM
+    // =========================
+    private int _attackCooldown = 0;
+
+    public bool CanAttack()
+    {
+        return _attackCooldown == 0;
+    }
+
+    public void ResetAttackCooldown(int value)
+    {
+        _attackCooldown = value;
+    }
+
+    public void TickCooldown()
+    {
+        if (_attackCooldown > 0)
+            _attackCooldown--;
+    }
+
+    // =========================
+    // CONSTRUCTOR
+    // =========================
     protected Enemy(Vector2 pos, string name, char glyph, int health, int attack, int defense, int speed, int gold, int ticksPerMove = 5)
     {
         Pos = pos;
@@ -34,6 +58,9 @@ public abstract class Enemy : IDrawable
         _ticksPerMove = ticksPerMove;
     }
 
+    // =========================
+    // UPDATE (movement AI unchanged)
+    // =========================
     public virtual void Update(Player player, HashSet<Vector2> walkables)
     {
         _moveCounter++;
@@ -52,7 +79,6 @@ public abstract class Enemy : IDrawable
 
         if (shouldFlee)
         {
-            // Generate all possible adjacent moves
             List<Vector2> possibleMoves = new List<Vector2>()
             {
                 Pos + new Vector2(-1, 0),
@@ -65,22 +91,23 @@ public abstract class Enemy : IDrawable
                 Pos + new Vector2(1, 1)
             };
 
-            // Filter only walkable tiles
             var validMoves = possibleMoves.Where(p => walkables.Contains(p)).ToList();
             if (validMoves.Count > 0)
             {
-                // Pick the move that **increases distance from player**
-                bestMove = validMoves.OrderByDescending(p => Vector2.manhattanDistance(p, player.Pos)).First();
+                bestMove = validMoves
+                    .OrderByDescending(p => Vector2.manhattanDistance(p, player.Pos))
+                    .First();
             }
         }
         else
         {
-            // Chase player
             Vector2 dir = new Vector2(
                 Math.Sign(player.Pos.X - Pos.X),
                 Math.Sign(player.Pos.Y - Pos.Y)
             );
+
             Vector2 newPos = Pos + dir;
+
             if (walkables.Contains(newPos))
                 bestMove = newPos;
         }
@@ -88,6 +115,9 @@ public abstract class Enemy : IDrawable
         Pos = bestMove;
     }
 
+    // =========================
+    // DRAW
+    // =========================
     public void Draw(IRenderWindow disp)
     {
         disp.Draw(Glyph, Pos, ConsoleColor.Red);

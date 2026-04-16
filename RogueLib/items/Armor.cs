@@ -1,20 +1,35 @@
 ﻿using RogueLib.Dungeon;
 using RogueLib.Utilities;
 
-namespace RogueLib.items
+namespace RogueLib.items;
+
+public class Armor : Item
 {
-    public class Armor : Item
+    public ArmorType Type { get; }
+    public int DefenseValue { get; }
+
+    public Armor(Vector2 pos, ArmorType type, int level)
+        : base('[', pos)
     {
-        public Armor(Vector2 pos) : base('[', pos) { }
+        Type = type;
 
-        public override void Apply(Player player)
+        DefenseValue = type switch
         {
-            player.AddArmor(2); // +2 shield
-        }
+            ArmorType.Light => 1,
+            ArmorType.Medium => 2,
+            ArmorType.Heavy => 3,
+            _ => 0
+        };
 
-        public override void Draw(IRenderWindow disp)
-        {
-            disp.Draw(Glyph, Pos, ConsoleColor.Cyan);
-        }
+        // optional scaling per level
+        DefenseValue += level - 1;
     }
+
+    public override void Apply(Player player)
+    {
+        player.AddArmor(DefenseValue);
+    }
+
+    public override void Draw(IRenderWindow disp)
+        => disp.Draw(Glyph, Pos, ConsoleColor.Cyan);
 }

@@ -1,27 +1,45 @@
 ﻿using RogueLib.Dungeon;
 using RogueLib.Utilities;
 
-namespace RogueLib.items
+namespace RogueLib.items;
+
+public class Weapon : Item
 {
-    public class Weapon : Item
+    public int Power { get; }
+    public WeaponType Type { get; }
+
+    public Weapon(Vector2 pos, WeaponType type, int level) : base(')', pos)
     {
-        public int Power { get; }
+        Type = type;
 
-        public Weapon(Vector2 pos, int power) : base(')', pos)
+        int basePower = type switch
         {
-            Power = power;
-        }
+            WeaponType.Dagger => 1,
+            WeaponType.Sword => 3,
+            WeaponType.Axe => 5,
+            WeaponType.Bow => 1,
+            _ => 1
+        };
 
-        public override void Apply(Player player)
-        {
-            // Weapon permanently increases STR
-            player.AddStrength(Power);
-            player.AddLog($"+{Power} STR from weapon");
-        }
+        Power = basePower + (level - 1); // scaling per level
+    }
 
-        public override void Draw(IRenderWindow disp)
+    public override void Apply(Player player)
+    {
+        player.AddStrength(Power);
+    }
+
+    public override void Draw(IRenderWindow disp)
+    {
+        ConsoleColor color = Type switch
         {
-            disp.Draw(')', Pos, ConsoleColor.White);
-        }
+            WeaponType.Dagger => ConsoleColor.Gray,
+            WeaponType.Sword => ConsoleColor.White,
+            WeaponType.Axe => ConsoleColor.DarkYellow,
+            WeaponType.Bow => ConsoleColor.Green,
+            _ => ConsoleColor.White
+        };
+
+        disp.Draw(Glyph, Pos, color);
     }
 }

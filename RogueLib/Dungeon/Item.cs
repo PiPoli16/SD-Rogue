@@ -1,7 +1,6 @@
 ﻿using RogueLib.Utilities;
-using RogueLib.Dungeon;
 
-namespace RogueLib.items;
+namespace RogueLib.Dungeon;
 
 public abstract class Item
 {

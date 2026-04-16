@@ -9,7 +9,7 @@ public abstract class Scene : ICommandable, IDrawable
     public abstract void DoCommand(Command command);
     public abstract void Draw(IRenderWindow disp);
     public abstract void Update();
-   
+
     protected Player? _player;
     protected Game? _game;
 

@@ -6,7 +6,7 @@ namespace RogueLib.items;
 
 public enum PotionType
 {
-    Heal,
-    Strength,
-    Defense
+    Healing,
+    Power,
+    Guard
 }
