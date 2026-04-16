@@ -31,7 +31,7 @@ public class Player : IActor, IDrawable
     public int HP => _hp;
     public int MaxHP { get => _maxHp; set => _maxHp = value; }
 
-    // ✅ DEFENSE STAT (FIX YOU REQUESTED)
+    // DEFENSE STAT
     public int Defense => _shield;
 
     public bool IsDead => _hp <= 0;
