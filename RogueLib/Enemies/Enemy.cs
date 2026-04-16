@@ -21,7 +21,7 @@ public abstract class Enemy : IDrawable
     private int _ticksPerMove;
 
     // =========================
-    // 🔥 ATTACK COOLDOWN SYSTEM
+    // ATTACK COOLDOWN SYSTEM
     // =========================
     private int _attackCooldown = 0;
 
@@ -59,7 +59,7 @@ public abstract class Enemy : IDrawable
     }
 
     // =========================
-    // UPDATE (movement AI unchanged)
+    // movement
     // =========================
     public virtual void Update(Player player, HashSet<Vector2> walkables)
     {

@@ -56,7 +56,7 @@ public class Player : IActor, IDrawable
 
     // ================= STATS =================
 
-    // 🧠 kill gains
+    // kill gains
     public void AddStrength(int value)
     {
         _str += value;
