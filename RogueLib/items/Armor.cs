@@ -1,63 +1,49 @@
-﻿using RogueLib.Dungeon;
-using RogueLib.Utilities;
+﻿using RogueLib.Dungeon;   // Access to base Item class
+using RogueLib.Utilities; // Access to Vector2 (position)
 
-namespace RogueLib.items;
+namespace RogueLib.items; // Namespace for item-related classes
 
 /// <summary>
-/// Armor item that increases the player's defense (shield value).
-/// 
-/// Armor is a permanent stat-boosting item that:
-/// - Adds defense when picked up
-/// - Has different types (Light, Medium, Heavy)
-/// - Scales slightly with dungeon level
+/// Armor item that increases the player's defense (shield).
 /// </summary>
-public class Armor : Item
+public class Armor : Item // Inherits from Item
 {
-    /// <summary>
-    /// Type of armor determines base defense value.
-    /// </summary>
+    // Stores the type of armor (Light, Medium, Heavy)
     public ArmorType Type { get; }
 
-    /// <summary>
-    /// Final defense value granted when applied to player.
-    /// </summary>
+    // Stores the final defense value after calculation
     public int DefenseValue { get; }
 
-    /// <summary>
-    /// Creates an armor item at a specific position with a type and level scaling.
-    /// </summary>
-    /// <param name="pos">Position in the dungeon</param>
-    /// <param name="type">Armor type (Light, Medium, Heavy)</param>
-    /// <param name="level">Dungeon level used for scaling defense</param>
+    // Constructor: creates armor with position, type, and level scaling
     public Armor(Vector2 pos, ArmorType type, int level)
-        : base('[', pos)
+        : base('[', pos) // Calls Item constructor → sets glyph '[' and position
     {
-        Type = type;
+        Type = type; // Save armor type
 
-        // Base defense depends on armor type
+        // Determine base defense depending on armor type
         DefenseValue = type switch
         {
-            ArmorType.Light => 1,
-            ArmorType.Medium => 2,
-            ArmorType.Heavy => 3,
-            _ => 0
+            ArmorType.Light => 1,   // lowest defense
+            ArmorType.Medium => 2,  // medium defense
+            ArmorType.Heavy => 3,   // highest defense
+            _ => 0                  // fallback
         };
 
-        // Level scaling: each level increases defense by +1
+        // Apply level scaling:
+        // Level 1 → +0
+        // Level 2 → +1
+        // Level 3 → +2
         DefenseValue += level - 1;
     }
 
-    /// <summary>
-    /// Applies armor effect to player by increasing their defense (shield).
-    /// </summary>
+    // Defines what happens when player picks up the armor
     public override void Apply(Player player)
     {
-        player.AddArmor(DefenseValue);
+        player.AddArmor(DefenseValue); // Increase player's defense (shield)
     }
 
-    /// <summary>
-    /// Draws the armor on the game screen using a cyan color.
-    /// </summary>
+    // Defines how the armor is drawn on the screen
     public override void Draw(IRenderWindow disp)
         => disp.Draw(Glyph, Pos, ConsoleColor.Cyan);
+    // Draw armor at its position with cyan color
 }

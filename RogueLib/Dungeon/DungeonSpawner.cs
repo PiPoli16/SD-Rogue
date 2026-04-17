@@ -22,8 +22,9 @@ public abstract class DungeonSpawner
     /// <summary>
     /// Set of all walkable floor tiles in the dungeon.
     /// Used as valid spawn locations for entities.
+    /// A HashSet<T> is a collection of unique elements.
     /// </summary>
-    protected HashSet<Vector2> _floor;
+    protected HashSet<Vector2> _floor; //does the tile exist and give me a random tile --> dictionary: Store position → object (i don't need this)
 
     /// <summary>
     /// Current dungeon level.
@@ -72,4 +73,6 @@ public abstract class DungeonSpawner
     /// </summary>
     protected Vector2 RandomFloor()
         => _floor.ElementAt(_rng.Next(_floor.Count));
+    //count = number of vector2 in the hashset
+    //element at=give me for example 3rd element in the collection
 }

@@ -44,8 +44,8 @@ public class DefaultDungeonSpawner : DungeonSpawner
         // Spawn Goblins
         for (int i = 0; i < goblins; i++)
         {
-            var g = new Goblin(RandomFloor());
-            g.AttackPower += statIncrease;
+            var g = new Goblin(RandomFloor()); //Picks a random Vector2 position from _floor
+            g.AttackPower += statIncrease; //_floor contains all walkable tiles
             enemies.Add(g);
         }
 
@@ -89,10 +89,10 @@ public class DefaultDungeonSpawner : DungeonSpawner
         items.Add(new Weapon(RandomFloor(), WeaponType.Bow, _level));
 
         // Random potion selection (2 out of 3 types)
-        var potionTypes = Enum.GetValues(typeof(PotionType))
-                              .Cast<PotionType>()
+        var potionTypes = Enum.GetValues(typeof(PotionType)) //This gets all values in the enum: PotionType.Healing --> returns array of object
+                              .Cast<PotionType>()//we need to convert to IEnumerable [Healing, Power, Guard] --> Treat these values as PotionType -->Ienumerable can be put in loop
                               .OrderBy(_ => _rng.Next())
-                              .Take(2);
+                              .Take(2);//takes first 2 items
 
         foreach (var type in potionTypes)
             items.Add(new Potion(RandomFloor(), type));
@@ -118,15 +118,15 @@ public class DefaultDungeonSpawner : DungeonSpawner
     /// </summary>
     public override Vector2 SpawnExit(List<Item> items, List<Enemy> enemies)
     {
-        Vector2 pos;
+        Vector2 pos; //store exit location
 
         // Keep generating positions until a free tile is found
         do
         {
-            pos = RandomFloor();
+            pos = RandomFloor(); //picks a random walkable tile
         }
-        while (items.Any(i => i.Pos == pos) ||
-               enemies.Any(e => e.Pos == pos));
+        while (items.Any(i => i.Pos == pos) || //reject if Any item is already there
+               enemies.Any(e => e.Pos == pos)); //reject enemies.Any(e => e.Pos == pos));
 
         return pos;
     }

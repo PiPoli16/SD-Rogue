@@ -1,72 +1,54 @@
-﻿using RogueLib.Dungeon;
-using RogueLib.Utilities;
+﻿using RogueLib.Dungeon;   // Gives access to base Item class
+using RogueLib.Utilities; // Gives access to Vector2 (position)
 
-namespace RogueLib.items;
+namespace RogueLib.items; // Namespace for item-related classes
 
 /// <summary>
-/// Potion item that provides a temporary stat or health boost.
-/// 
-/// Potions are consumable items that are applied immediately
-/// when picked up by the player (via AddItem + Apply).
+/// Potion item that provides a stat or health boost.
 /// </summary>
-public class Potion : Item
+public class Potion : Item // Inherits from Item
 {
-    /// <summary>
-    /// Type of potion determines its effect:
-    /// - Healing: restores HP
-    /// - Power: increases strength
-    /// - Guard: increases defense
-    /// </summary>
+    // Stores the type of potion (Healing, Power, Guard)
     public PotionType Type { get; }
 
-    /// <summary>
-    /// Effect strength of the potion.
-    /// Currently fixed to 2 for all types.
-    /// </summary>
+    // Property that returns the effect amount based on potion type
     public int Amount =>
         Type switch
         {
-            PotionType.Healing => 2,
-            PotionType.Power => 2,
-            PotionType.Guard => 2,
-            _ => 0
+            PotionType.Healing => 2, // restores HP
+            PotionType.Power => 2,   // increases strength
+            PotionType.Guard => 2,   // increases defense
+            _ => 0                   // fallback (should not happen)
         };
 
-    /// <summary>
-    /// Creates a potion item at a given position with a specific type.
-    /// </summary>
+    // Constructor: creates a potion at a position with a specific type
     public Potion(Vector2 pos, PotionType type)
-        : base('!', pos)
+        : base('!', pos) // Calls Item constructor → sets glyph '!' and position
     {
-        Type = type;
+        Type = type; // Save potion type
     }
 
-    /// <summary>
-    /// Applies the potion effect immediately to the player.
-    /// 
-    /// This is called when the player picks up the item.
-    /// </summary>
+    // Defines what happens when the player picks up the potion
     public override void Apply(Player player)
     {
-        switch (Type)
+        switch (Type) // Decide effect based on potion type
         {
             case PotionType.Healing:
-                player.Heal(Amount);
+                player.Heal(Amount); // Restore HP
                 break;
 
             case PotionType.Power:
-                player.AddStrength(Amount);
+                player.AddStrength(Amount); // Increase strength
                 break;
 
             case PotionType.Guard:
-                player.AddArmor(Amount);
+                player.AddArmor(Amount); // Increase defense
                 break;
         }
     }
 
-    /// <summary>
-    /// Draws the potion on screen using a magenta color.
-    /// </summary>
+    // Defines how the potion is drawn on the screen
     public override void Draw(IRenderWindow disp)
         => disp.Draw('!', Pos, ConsoleColor.Magenta);
+    // Draw potion at its position with magenta color
 }

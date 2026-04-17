@@ -1,52 +1,46 @@
-﻿using RogueLib.Utilities;
+﻿using RogueLib.Utilities; // Gives access to Vector2 (position struct)
 
-namespace RogueLib.Dungeon;
+namespace RogueLib.Dungeon; // Logical grouping for dungeon-related classes
 
 /// <summary>
 /// Base class for all items (weapons, potions, armor, gold, etc.)
-/// Items exist in the world at a position and can be picked up by the player.
-/// Each item defines:
-/// - What happens when the player picks it up (Apply)
-/// - How it is displayed on screen (Draw)
+/// Items exist in the world and can be picked up by the player.
+/// This class defines common properties and behavior for all items.
 /// </summary>
-public abstract class Item
+public abstract class Item // abstract = cannot be instantiated directly
 {
     /// <summary>
     /// Position of the item in the dungeon grid.
-    /// Used for collision detection with the player.
+    /// 
     /// </summary>
-    public Vector2 Pos { get; set; }
+    public Vector2 Pos { get; set; } // get = read, set = modify position
 
     /// <summary>
-    /// Character used to visually represent the item on the map.
-    /// Example: '!' for potions, ')' for weapons, '*' for gold.
+    /// Character symbol used to represent the item on screen.
+    /// Example: '!' = potion, ')' = weapon, '*' = gold
     /// </summary>
-    public char Glyph { get; init; }
+    public char Glyph { get; init; } // init = set only during construction
 
     /// <summary>
-    /// Constructor sets the item type (glyph) and its position in the world.
+    /// Constructor initializes the item’s symbol and position.
     /// </summary>
-    /// <param name="glyph">Visual representation of the item</param>
-    /// <param name="pos">Position in the dungeon grid</param>
-    protected Item(char glyph, Vector2 pos)
+    protected Item(char glyph, Vector2 pos) // protected = only subclasses can call this
     {
-        Glyph = glyph;
-        Pos = pos;
+        Glyph = glyph; // assign visual representation
+        Pos = pos;     // assign location in the dungeon
     }
 
     /// <summary>
-    /// Defines the effect of the item when the player picks it up.
-    /// Example:
-    /// - Potion restores HP
-    /// - Weapon increases strength
-    /// - Armor increases defense
-    /// - Gold increases currency
+    /// Defines what happens when the player picks up the item.
+    /// This must be implemented by each specific item type.
     /// </summary>
     public abstract void Apply(Player player);
+    // abstract = no implementation here, subclasses MUST implement
 
     /// <summary>
     /// Defines how the item is drawn on the screen.
-    /// Each subclass decides its color and appearance.
+    /// Each item decides its own color and appearance.
     /// </summary>
     public abstract void Draw(IRenderWindow disp);
+    // disp = rendering system (draws to buffer, not directly to console)
 }
